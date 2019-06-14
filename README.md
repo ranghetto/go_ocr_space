@@ -100,8 +100,17 @@ func main() {
     //just parsed text
     text := result.JustText()
 
-    //printing the results
-    fmt.Println(result)
+    //printing the result (just parsed text)
 	fmt.Println(text)
 }
+```
+### Example output
+![](https://i.pinimg.com/originals/74/1a/37/741a37fe653930e27e4b5e9c61f30ca0.jpg)
+```
+"There are many people out
+there who will tell you that
+you can't. What you've got
+to do is turn around and say,
+'Watch Me'."
+-Jack White
 ```
