@@ -1,50 +1,49 @@
 package ocr_space
 
 import (
+	"bufio"
+	"encoding/base64"
 	"encoding/json"
-	"github.com/polds/imgbase64"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
 type OCRText struct {
-	ParsedResults                []ParsedResults `json:"ParsedResults"`
-	OCRExitCode                  int             `json:"OCRExitCode"`
-	IsErroredOnProcessing        bool            `json:"IsErroredOnProcessing"`
-	ProcessingTimeInMilliseconds string          `json:"ProcessingTimeInMilliseconds"`
-	SearchablePDFURL             string          `json:"SearchablePDFURL"`
-}
+	ParsedResults []struct {
+		TextOverlay struct {
+			Lines []struct {
+				Words []struct {
+					WordText string  `json:"WordText"`
+					Left     float64 `json:"Left"`
+					Top      float64 `json:"Top"`
+					Height   float64 `json:"Height"`
+					Width    float64 `json:"Width"`
+				} `json:"Words"`
 
-type ParsedResults struct {
-	TextOverlay       TextOverlay `json:"TextOverlay"`
-	TextOrientation   string      `json:"TextOrientation"`
-	FileParseExitCode int         `json:"FileParseExitCode"`
-	ParsedText        string      `json:"ParsedText"`
-	ErrorMessage      string      `json:"ErrorMessage"`
-	ErrorDetails      string      `json:"ErrorDetails"`
-}
+				MaxHeight float64 `json:"MaxHeight"`
+				MinTop    float64 `json:"MinTop"`
+			} `json:"Lines"`
 
-type TextOverlay struct {
-	Lines      []Lines `json:"Lines"`
-	HasOverlay bool    `json:"HasOverlay"`
-	Message    string  `json:"Message"`
-}
+			HasOverlay bool   `json:"HasOverlay"`
+			Message    string `json:"Message"`
+		} `json:"TextOverlay"`
 
-type Lines struct {
-	Words     []Words `json:"Words"`
-	MaxHeight float64 `json:"MaxHeight"`
-	MinTop    float64 `json:"MinTop"`
-}
+		TextOrientation   string `json:"TextOrientation"`
+		FileParseExitCode int    `json:"FileParseExitCode"`
+		ParsedText        string `json:"ParsedText"`
+		ErrorMessage      string `json:"ErrorMessage"`
+		ErrorDetails      string `json:"ErrorDetails"`
+	} `json:"ParsedResults"`
 
-type Words struct {
-	WordText string  `json:"WordText"`
-	Left     float64 `json:"Left"`
-	Top      float64 `json:"Top"`
-	Height   float64 `json:"Height"`
-	Width    float64 `json:"Width"`
+	OCRExitCode                  int    `json:"OCRExitCode"`
+	IsErroredOnProcessing        bool   `json:"IsErroredOnProcessing"`
+	ProcessingTimeInMilliseconds string `json:"ProcessingTimeInMilliseconds"`
+	SearchablePDFURL             string `json:"SearchablePDFURL"`
 }
 
 type Config struct {
@@ -59,10 +58,10 @@ func InitConfig(apiKey string, language string) Config {
 	return config
 }
 
-func (c Config) ConvertPdfFromUrl(imageUrl string) OCRText {
+func (c Config) ConvertPdfFromUrl(pdfUrl string) OCRText {
 	resp, err := http.PostForm("https://api.ocr.space/parse/image",
 		url.Values{
-			"url":                          {imageUrl},
+			"url":                          {pdfUrl},
 			"language":                     {c.Language},
 			"apikey":                       {c.ApiKey},
 			"isOverlayRequired":            {"true"},
@@ -71,13 +70,13 @@ func (c Config) ConvertPdfFromUrl(imageUrl string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	var results OCRText
@@ -87,7 +86,12 @@ func (c Config) ConvertPdfFromUrl(imageUrl string) OCRText {
 		log.Fatalln(err)
 	}
 
+	if results.IsErroredOnProcessing == true {
+		err = fmt.Errorf("OCR.Api: Error on processing file %s", pdfUrl)
+	}
+
 	return results
+
 }
 
 func (c Config) ConvertImageFromUrl(imageUrl string) OCRText {
@@ -99,13 +103,13 @@ func (c Config) ConvertImageFromUrl(imageUrl string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	var results OCRText
@@ -113,6 +117,10 @@ func (c Config) ConvertImageFromUrl(imageUrl string) OCRText {
 	err = json.Unmarshal(body, &results)
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	if results.IsErroredOnProcessing == true {
+		err = fmt.Errorf("OCR.Api: Error on processing file %s", imageUrl)
 	}
 
 	return results
@@ -133,13 +141,13 @@ func (c Config) ConvertPdfFromLocal(localPath string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	var results OCRText
@@ -147,6 +155,10 @@ func (c Config) ConvertPdfFromLocal(localPath string) OCRText {
 	err = json.Unmarshal(body, &results)
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	if results.IsErroredOnProcessing == true {
+		err = fmt.Errorf("OCR.Api: Error on processing file %s", localPath)
 	}
 
 	return results
@@ -164,13 +176,13 @@ func (c Config) ConvertImageFromLocal(localPath string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	var results OCRText
@@ -191,24 +203,30 @@ func (ocr OCRText) JustText() string {
 	return text
 }
 
-func base64ImgToPdf(imageString string) string {
-	s := strings.Split(imageString, ";")
-	pdfString := "data:application/pdf"
-	if len(s) != 2 {
-		return "Error parsing the base64 image"
+func base64Format(encoded string, localPath string) string {
+	s := strings.Split(localPath, ".")
+	lastElement := s[len(s)-1]
+	pdfString := "data:application/pdf;base64,"
+	imageString := "data:image/" + lastElement + ";base64,"
+
+	if lastElement == "pdf" {
+		return pdfString + encoded
+	} else if lastElement == "png" || lastElement == "jpg" || lastElement == "gif" {
+		return imageString + encoded
 	} else {
-		return pdfString + ";" + s[1]
+		return "File type not valid. PDF, JPG, PNG or GIF supported."
 	}
+
 }
 
 func encodeToBase64(path string) string {
-	baseImage, err := imgbase64.FromLocal(path)
-	if nil != err {
-		return "Error encoding base64"
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	format := strings.Split(path, ".")
-	if format[1] == "pdf" {
-		return base64ImgToPdf(baseImage)
-	}
-	return baseImage
+	reader := bufio.NewReader(f)
+	content, _ := ioutil.ReadAll(reader)
+	encoded := base64.StdEncoding.EncodeToString(content)
+
+	return base64Format(encoded, path)
 }
