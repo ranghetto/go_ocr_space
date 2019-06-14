@@ -90,6 +90,7 @@ func (c Config) ConvertPdfFromUrl(pdfUrl string) OCRText {
 		err = fmt.Errorf("OCR.Api: Error on processing file %s", pdfUrl)
 	}
 
+	results.checkAPIError()
 	return results
 
 }
@@ -123,6 +124,7 @@ func (c Config) ConvertImageFromUrl(imageUrl string) OCRText {
 		err = fmt.Errorf("OCR.Api: Error on processing file %s", imageUrl)
 	}
 
+	results.checkAPIError()
 	return results
 }
 
@@ -161,6 +163,7 @@ func (c Config) ConvertPdfFromLocal(localPath string) OCRText {
 		err = fmt.Errorf("OCR.Api: Error on processing file %s", localPath)
 	}
 
+	results.checkAPIError()
 	return results
 }
 
@@ -192,6 +195,7 @@ func (c Config) ConvertImageFromLocal(localPath string) OCRText {
 		log.Fatalln(err)
 	}
 
+	results.checkAPIError()
 	return results
 }
 
@@ -229,4 +233,11 @@ func encodeToBase64(path string) string {
 	encoded := base64.StdEncoding.EncodeToString(content)
 
 	return base64Format(encoded, path)
+}
+
+func (ocr OCRText) checkAPIError() {
+	if ocr.IsErroredOnProcessing {
+		log.Println("OCR.Space API error.\nError code:", ocr.OCRExitCode, "\nCheck https://ocr.space/ocrapi for "+
+			"more details.")
+	}
 }
