@@ -11,7 +11,7 @@ OCR library is based on [OCR.Space](https://ocr.space/) API, meant to read text 
 You can get your personal API key [here](https://ocr.space/ocrapi) (we will need this later)
 
 ### 2. <a name="install"></a>Installation
-`go get -t github.com/raghetto/go_ocr_space`
+`go get -t github.com/ranghetto/go_ocr_space`
 
 ## 3. <a name="usage"></a>Baisc Usage
 You need at first to create a configuration:
