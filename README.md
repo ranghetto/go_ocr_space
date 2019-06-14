@@ -4,7 +4,7 @@ OCR library is based on [OCR.Space](https://ocr.space/) API, meant to read text 
 ## Index
 1. [Get your API key](#getapi)
 2. [Installation](#install)
-3. [Baisc Usage](#usage)
+3. [Basic Usage](#usage)
 4. [Example Code](#example)
 
 ### <a name="getapi"></a>1. Get your API key
@@ -97,11 +97,8 @@ func main() {
     //actual converting the image from the url (struct content) 
     result := config.ConvertImageFromUrl("https://i.pinimg.com/originals/74/1a/37/741a37fe653930e27e4b5e9c61f30ca0.jpg")
 
-    //just parsed text
-    text := result.JustText()
-
-    //printing the result (just parsed text)
-	fmt.Println(text)
+    //printing the just the parsed text
+	fmt.Println(result.JustText())
 }
 ```
 ### Example output
