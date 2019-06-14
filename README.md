@@ -19,7 +19,13 @@ You need at first to create a configuration:
 package main
 
 import(
-	ocr "go_ocr_space"
+	/*
+	Remember to run your program from your $GO_PATH/src/name_of_your_folder
+	or to provide the right path to this library that is situated
+	in $GO_PATH/src/github.com/ranghetto/go_ocr_space
+	*/
+	
+	ocr "github.com/ranghetto/go_ocr_space"
 	//Other libraries...
 )
 
