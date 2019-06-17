@@ -1,16 +1,16 @@
 package ocr_space
 
 import (
-	"bufio"
-	"encoding/base64"
+	"bytes"
 	"encoding/json"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	"path/filepath"
 )
 
 type OCRText struct {
@@ -40,28 +40,33 @@ type OCRText struct {
 		ErrorDetails      string `json:"ErrorDetails"`
 	} `json:"ParsedResults"`
 
-	OCRExitCode                  int    `json:"OCRExitCode"`
-	IsErroredOnProcessing        bool   `json:"IsErroredOnProcessing"`
-	ProcessingTimeInMilliseconds string `json:"ProcessingTimeInMilliseconds"`
-	SearchablePDFURL             string `json:"SearchablePDFURL"`
+	OCRExitCode                  int      `json:"OCRExitCode"`
+	IsErroredOnProcessing        bool     `json:"IsErroredOnProcessing"`
+	ErrorMessage                 []string `json:"ErrorMessage"`
+	ErrorDetails                 string   `json:"ErrorDetails"`
+	ProcessingTimeInMilliseconds string   `json:"ProcessingTimeInMilliseconds"`
+	SearchablePDFURL             string   `json:"SearchablePDFURL"`
 }
 
 type Config struct {
 	ApiKey   string
 	Language string
+	Url      string
 }
 
 func InitConfig(apiKey string, language string) Config {
 	var config Config
 	config.ApiKey = apiKey
 	config.Language = language
+	config.Url = "https://api.ocr.space/parse/image"
 	return config
 }
 
-func (c Config) ConvertPdfFromUrl(pdfUrl string) OCRText {
-	resp, err := http.PostForm("https://api.ocr.space/parse/image",
+func (c Config) ParseFromUrl(fileUrl string) (OCRText, error) {
+	var results OCRText
+	var resp, err = http.PostForm(c.Url,
 		url.Values{
-			"url":                          {pdfUrl},
+			"url":                          {fileUrl},
 			"language":                     {c.Language},
 			"apikey":                       {c.ApiKey},
 			"isOverlayRequired":            {"true"},
@@ -70,71 +75,28 @@ func (c Config) ConvertPdfFromUrl(pdfUrl string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
-
-	var results OCRText
 
 	err = json.Unmarshal(body, &results)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
 
-	if results.IsErroredOnProcessing == true {
-		err = fmt.Errorf("OCR.Api: Error on processing file %s", pdfUrl)
-	}
-
-	results.checkAPIError()
-	return results
-
+	return results, nil
 }
 
-func (c Config) ConvertImageFromUrl(imageUrl string) OCRText {
-	resp, err := http.PostForm("https://api.ocr.space/parse/image",
-		url.Values{
-			"url":      {imageUrl},
-			"language": {c.Language},
-			"apikey":   {c.ApiKey},
-		},
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
+func (c Config) ParseFromBase64(baseString string) (OCRText, error) {
 	var results OCRText
-
-	err = json.Unmarshal(body, &results)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if results.IsErroredOnProcessing == true {
-		err = fmt.Errorf("OCR.Api: Error on processing file %s", imageUrl)
-	}
-
-	results.checkAPIError()
-	return results
-}
-
-func (c Config) ConvertPdfFromLocal(localPath string) OCRText {
-
-	baseImage := encodeToBase64(localPath)
-
 	resp, err := http.PostForm("https://api.ocr.space/parse/image",
 		url.Values{
-			"base64Image":                  {baseImage},
+			"base64Image":                  {baseString},
 			"language":                     {c.Language},
 			"apikey":                       {c.ApiKey},
 			"isOverlayRequired":            {"true"},
@@ -143,101 +105,90 @@ func (c Config) ConvertPdfFromLocal(localPath string) OCRText {
 		},
 	)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
-
-	var results OCRText
 
 	err = json.Unmarshal(body, &results)
 	if err != nil {
-		log.Fatalln(err)
+		return results, err
 	}
 
-	if results.IsErroredOnProcessing == true {
-		err = fmt.Errorf("OCR.Api: Error on processing file %s", localPath)
-	}
-
-	results.checkAPIError()
-	return results
+	return results, nil
 }
 
-func (c Config) ConvertImageFromLocal(localPath string) OCRText {
-
-	baseImage := encodeToBase64(localPath)
-
-	resp, err := http.PostForm("https://api.ocr.space/parse/image",
-		url.Values{
-			"base64Image": {baseImage},
-			"language":    {c.Language},
-			"apikey":      {c.ApiKey},
-		},
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
+func (c Config) ParseFromLocal(localPath string) (OCRText, error) {
 	var results OCRText
-
-	err = json.Unmarshal(body, &results)
-	if err != nil {
-		log.Fatalln(err)
+	params := map[string]string{
+		"language":                     c.Language,
+		"apikey":                       c.ApiKey,
+		"isOverlayRequired":            "true",
+		"isSearchablePdfHideTextLayer": "true",
+		"scale": "true",
 	}
 
-	results.checkAPIError()
-	return results
+	file, err := os.Open(localPath)
+	if err != nil {
+		return results, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", filepath.Base(localPath))
+	if err != nil {
+		return results, err
+	}
+	_, err = io.Copy(part, file)
+
+	for key, val := range params {
+		_ = writer.WriteField(key, val)
+	}
+	err = writer.Close()
+	if err != nil {
+		return results, err
+	}
+
+	req, err := http.NewRequest("POST", c.Url, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		body := &bytes.Buffer{}
+		_, err := body.ReadFrom(response.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		response.Body.Close()
+		err = json.Unmarshal(body.Bytes(), &results)
+		if err != nil {
+			return results, err
+		}
+	}
+
+	return results, nil
 }
 
 func (ocr OCRText) JustText() string {
 	text := ""
-	for _, page := range ocr.ParsedResults {
-		text += page.ParsedText
+	if ocr.IsErroredOnProcessing {
+		for _, page := range ocr.ErrorMessage {
+			text += page
+		}
+	} else {
+		for _, page := range ocr.ParsedResults {
+			text += page.ParsedText
+		}
 	}
 	return text
-}
-
-func base64Format(encoded string, localPath string) string {
-	s := strings.Split(localPath, ".")
-	lastElement := s[len(s)-1]
-	pdfString := "data:application/pdf;base64,"
-	imageString := "data:image/" + lastElement + ";base64,"
-
-	if lastElement == "pdf" {
-		return pdfString + encoded
-	} else if lastElement == "png" || lastElement == "jpg" || lastElement == "gif" {
-		return imageString + encoded
-	} else {
-		return "File type not valid. PDF, JPG, PNG or GIF supported."
-	}
-
-}
-
-func encodeToBase64(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	reader := bufio.NewReader(f)
-	content, _ := ioutil.ReadAll(reader)
-	encoded := base64.StdEncoding.EncodeToString(content)
-
-	return base64Format(encoded, path)
-}
-
-func (ocr OCRText) checkAPIError() {
-	if ocr.IsErroredOnProcessing {
-		log.Println("OCR.Space API error.\nError code:", ocr.OCRExitCode, "\nCheck https://ocr.space/ocrapi for "+
-			"more details.")
-	}
 }
