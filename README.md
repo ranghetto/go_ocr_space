@@ -19,7 +19,7 @@ Delete the folder situated in $GO_PATH/src/github.com/ranghetto/go_ocr_space and
 
 `go get -t github.com/ranghetto/go_ocr_space`
 
-## 4. <a name="usage"></a>Basic Usage
+### 4. <a name="usage"></a>Basic Usage
 You need at first to create a configuration:
 ```go
 package main
@@ -37,7 +37,7 @@ import(
 
 func main(){
 	
-	config := ocr.InitConfig("yourApiKeyHere", "eng")
+	config := ocr.InitConfig("yourApiKeyHere", "eng", OCREngine2)
 	//More code here...
 }
 ```
@@ -102,7 +102,7 @@ func main() {
 	apiKey:="helloworld"
 
     //setting up the configuration 
-    config := ocr.InitConfig(apiKey , "eng")
+    config := ocr.InitConfig(apiKey , "eng", OCREngine2)
 
     //actual converting the image from the url (struct content) 
     result, err := config.ParseFromUrl("https://www.azquotes.com/picture-quotes/quote-maybe-we-should-all-just-listen-to-records-and-quit-our-jobs-jack-white-81-40-26.jpg")
