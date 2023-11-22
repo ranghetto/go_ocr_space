@@ -19,7 +19,7 @@ Delete the folder situated in $GO_PATH/src/github.com/ranghetto/go_ocr_space and
 
 `go get -t github.com/ranghetto/go_ocr_space`
 
-## 4. <a name="usage"></a>Basic Usage
+### 4. <a name="usage"></a>Basic Usage
 You need at first to create a configuration:
 ```go
 package main
@@ -37,11 +37,11 @@ import(
 
 func main(){
 	
-	config := ocr.InitConfig("yourApiKeyHere", "eng")
+	config := ocr.InitConfig("yourApiKeyHere", "eng", OCREngine2)
 	//More code here...
 }
 ```
-The first parameter is your API key as a string and the second one is the code of the language you want read from file or image.
+The first parameter is your API key as a string, the second one is the code of the language you want read from file or image.
 Here a list of all available languages and their code*:
 * Arabic = `ara`
 * Bulgarian = `bul`
@@ -68,6 +68,13 @@ Here a list of all available languages and their code*:
 * Swedish = `swe`
 * Turkish = `tur`
 
+The third parameter allows the OCR Engine selection:
+* `OCREngine1`
+* `OCREngine2`
+* `OCREngine3`
+
+Read more about them [here](https://ocr.space/ocrapi#ocrengine).
+
 Now we can go ahead and start reading some text; there are three method that allow you to do it:
 
 `config.ParseFromUrl("https://example.com/image.png")`
@@ -76,7 +83,7 @@ Now we can go ahead and start reading some text; there are three method that all
 
 `config.ParseFromBase64("data:image/jpeg;base64,873hf9qehq98efwuehf...")`
 
-Method names are self explanatory.
+Method names are self-explanatory.
 
 Remember:
 .ParseFromBase64 need as parameter a valid Base64 format like `data:<file>/<extension>;base64,<image>` where:
@@ -102,7 +109,7 @@ func main() {
 	apiKey:="helloworld"
 
     //setting up the configuration 
-    config := ocr.InitConfig(apiKey , "eng")
+    config := ocr.InitConfig(apiKey , "eng", OCREngine2)
 
     //actual converting the image from the url (struct content) 
     result, err := config.ParseFromUrl("https://www.azquotes.com/picture-quotes/quote-maybe-we-should-all-just-listen-to-records-and-quit-our-jobs-jack-white-81-40-26.jpg")

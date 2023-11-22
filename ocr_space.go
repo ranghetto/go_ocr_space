@@ -1,4 +1,4 @@
-package ocr_space
+package go_ocr_space
 
 import (
 	"bytes"
@@ -11,6 +11,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+)
+
+type OCREngine string
+
+const (
+	OCREngine1 OCREngine = "1"
+	OCREngine2 OCREngine = "2"
+	OCREngine3 OCREngine = "3"
 )
 
 type OCRText struct {
@@ -49,16 +57,18 @@ type OCRText struct {
 }
 
 type Config struct {
-	ApiKey   string
-	Language string
-	Url      string
+	ApiKey    string
+	Language  string
+	Url       string
+	OCREngine string
 }
 
-func InitConfig(apiKey string, language string) Config {
+func InitConfig(apiKey string, language string, OCREngine OCREngine) Config {
 	var config Config
 	config.ApiKey = apiKey
 	config.Language = language
 	config.Url = "https://api.ocr.space/parse/image"
+	config.OCREngine = string(OCREngine)
 	return config
 }
 
@@ -71,7 +81,8 @@ func (c Config) ParseFromUrl(fileUrl string) (OCRText, error) {
 			"apikey":                       {c.ApiKey},
 			"isOverlayRequired":            {"true"},
 			"isSearchablePdfHideTextLayer": {"true"},
-			"scale": {"true"},
+			"scale":                        {"true"},
+			"OCREngine":                    {c.OCREngine},
 		},
 	)
 	if err != nil {
@@ -101,7 +112,8 @@ func (c Config) ParseFromBase64(baseString string) (OCRText, error) {
 			"apikey":                       {c.ApiKey},
 			"isOverlayRequired":            {"true"},
 			"isSearchablePdfHideTextLayer": {"true"},
-			"scale": {"true"},
+			"scale":                        {"true"},
+			"OCREngine":                    {c.OCREngine},
 		},
 	)
 	if err != nil {
@@ -129,7 +141,8 @@ func (c Config) ParseFromLocal(localPath string) (OCRText, error) {
 		"apikey":                       c.ApiKey,
 		"isOverlayRequired":            "true",
 		"isSearchablePdfHideTextLayer": "true",
-		"scale": "true",
+		"scale":                        "true",
+		"OCREngine":                    c.OCREngine,
 	}
 
 	file, err := os.Open(localPath)
