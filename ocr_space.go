@@ -1,4 +1,4 @@
-package main
+package go_ocr_space
 
 import (
 	"bytes"
